@@ -10,7 +10,7 @@
 #include <linux/slab.h>
 
 //Two Thread Pointers
-struct task_sreuct *producer_thread;
+struct task_struct *producer_thread;
 struct task_struct *consumer_thread;
 
 
@@ -66,6 +66,10 @@ int consumer(void *data)
 static int ModuleInit(void)
 {
 
+	//Create the producer and consumer threads
+	struct task_struct *producer_thread;
+	struct task_struct *consumer_thread;
+
 	//Create the buffer with size buffSize. 
 	//Otherwise return Out of Memory Error Code
 	buffer = kmalloc(buffSize * sizeof(int), GFP_KERNEL);
@@ -74,9 +78,8 @@ static int ModuleInit(void)
 		return -ENOMEM;
 	}
 
-	//Create the producer and consumer threads
-	struct task_struct *producer_thread = kthread_run(producer, NULL, "Producer");
-	struct task_struct *consumer_thread = kthread_run(consumer, NULL, "Consumer");
+	producer_thread = kthread_run(producer, NULL, "Producer");
+	consumer_thread = kthread_run(consumer, NULL, "Consumer");
 
 
 

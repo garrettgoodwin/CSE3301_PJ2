@@ -13,6 +13,7 @@
 struct task_struct *producer_thread;
 struct task_struct **consumer_threads;
 
+
 //Buffer and its size
 static int buffSize = 10;
 int *buffer;
@@ -51,7 +52,11 @@ int producer(void *data)
 
 int consumer(void *data)
 {
+
+	int* values = (int*)data;
 	int i, value;
+	printk("Value is %d\n", *values);
+
 	for(i = 0; i < buffSize; i++)
 	{
 		value = buffer[out];
@@ -64,12 +69,18 @@ int consumer(void *data)
 
 static int ModuleInit(void)
 {
+
 	//Create the producer and consumer threads
 	struct task_struct *producer_thread;
 	struct task_struct **consumer_threads;
 
 	//Counter
-	int index = 0;
+	int index = 0; 
+
+
+	//TMEPORARY
+	//printk("ENTERED\n");
+	Display();
 
 	//Create the buffer with size buffSize. 
 	//Otherwise return Out of Memory Error Code
@@ -89,11 +100,12 @@ static int ModuleInit(void)
 	if(cons > 0)
 	{
 		consumer_threads = kmalloc(sizeof(struct task_struct*), GFP_KERNEL);
-
+		
 		for(index = 0; index < cons; index++)
 		{
-
-			consumer_threads[index] = kthread_run(consumer, NULL, "Consumer");
+			int* threadID = kmalloc(sizeof(int), GFP_KERNEL);
+			*threadID = index;
+			consumer_threads[index] = kthread_run(consumer, (void*)threadID, "Consumer");
 		}
 	}
 

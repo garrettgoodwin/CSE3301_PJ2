@@ -11,8 +11,7 @@
 
 //Two Thread Pointers
 struct task_struct *producer_thread;
-struct task_struct *consumer_thread;
-
+struct task_struct **consumer_threads;
 
 //Buffer and its size
 static int buffSize = 10;
@@ -65,10 +64,12 @@ int consumer(void *data)
 
 static int ModuleInit(void)
 {
-
 	//Create the producer and consumer threads
 	struct task_struct *producer_thread;
-	struct task_struct *consumer_thread;
+	struct task_struct **consumer_threads;
+
+	//Counter
+	int index = 0;
 
 	//Create the buffer with size buffSize. 
 	//Otherwise return Out of Memory Error Code
@@ -78,54 +79,56 @@ static int ModuleInit(void)
 		return -ENOMEM;
 	}
 
-	producer_thread = kthread_run(producer, NULL, "Producer");
-	consumer_thread = kthread_run(consumer, NULL, "Consumer");
+	//Create a producer thread
+	if(prod == 1)
+	{
+		producer_thread = kthread_run(producer, NULL, "Producer");
+	}
 
+	//Create specified amount of Consumer threads
+	if(cons > 0)
+	{
+		consumer_threads = kmalloc(sizeof(struct task_struct*), GFP_KERNEL);
 
+		for(index = 0; index < cons; index++)
+		{
 
-
-
-
-
-
-
-
-
+			consumer_threads[index] = kthread_run(consumer, NULL, "Consumer");
+		}
+	}
 
 	//semaphore test
 	//struct semaphore empty;
 	//sema_init(&empty, 5);
-
-	//struct task_struct* p;
-	//size_t process_counter = 0;
-	//for_each_process(p)
-	//{
-	//	printk("Individual Process Ran\n");
-	//	++process_counter;
-	//}
-
-	//printk("Processes: %d", process_counter);
-	//Display();
-	//printk("Hello Kernel\n");
+	
 	return 0;
 }
 
 
 static void ModuleExit(void)
 {
+	int index;
 
-	//Stop both the producer and consumer thread
-	kthread_stop(producer_thread);
-	kthread_stop(consumer_thread);
+	//Stop producer thread
+	if(prod == 1)
+	{
+		
+		kthread_stop(producer_thread);
+	}
+
+	//Stop Consumer Threads
+	if(cons > 0)
+	{
+		for(index = 0; index < cons; index++)
+		{
+			kthread_stop(consumer_threads[index]);
+		}
+	}
 
 	//Free up the buffer memory
 	kfree(buffer);
 
-
-
-	//id funciton exists but cant remember
 	//printk("The total elapsed time of all processes for UID <UID of the user> is ");
-	//kthread_stop(kthread_3);
 }
 
 module_init(ModuleInit);

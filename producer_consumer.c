@@ -41,12 +41,25 @@ void Display(void)
 
 int producer(void *data)
 {
-	int i = 0;
-	for (i = 0; i < buffSize; i++)
+
+	struct task_struct *process;
+
+	//TEMPORARY: PRINT TEST
+	for_each_process(process)
 	{
-		buffer[in] = i;
-		in = (in + 1) % buffSize;
+		printk("Process: %d, UUID: %d\n", process->pid, process->cred->uid.val);
 	}
+
+
+
+
+	//TEMPORARY: OLD TEST CODE
+	//int i = 0;
+	//for (i = 0; i < buffSize; i++)
+	//{
+	//	buffer[in] = i;
+	//	in = (in + 1) % buffSize;
+	//}
 	return 0;
 }
 
@@ -74,12 +87,10 @@ static int ModuleInit(void)
 	struct task_struct *producer_thread;
 	struct task_struct **consumer_threads;
 
-	//Counter
 	int index = 0; 
 
 
-	//TMEPORARY
-	//printk("ENTERED\n");
+	//TMEPORARY: Display Varaibles
 	Display();
 
 	//Create the buffer with size buffSize. 
@@ -90,13 +101,13 @@ static int ModuleInit(void)
 		return -ENOMEM;
 	}
 
-	//Create a producer thread
+	//Create producer thread
 	if(prod == 1)
 	{
 		producer_thread = kthread_run(producer, NULL, "Producer");
 	}
 
-	//Create specified amount of Consumer threads
+	//Create specified # of Consumer threads
 	if(cons > 0)
 	{
 		consumer_threads = kmalloc(sizeof(struct task_struct*), GFP_KERNEL);
@@ -121,25 +132,29 @@ static void ModuleExit(void)
 {
 	int index;
 
-	//Stop producer thread
-	if(prod == 1)
+	//Stop producer thread if exists
+	if(prod == 1 && producer_thread != NULL)
 	{
-		
-		kthread_stop(producer_thread);
+		//Currently an error with rmmod and below line
+		//kthread_stop(producer_thread);
 	}
 
-	//Stop Consumer Threads
+	//Stop Consumer Threads if exists
 	if(cons > 0)
 	{
 		for(index = 0; index < cons; index++)
 		{
-			kthread_stop(consumer_threads[index]);
+			if(consumer_threads[index] != NULL)
+			{
+
+				//Currently an error with rmmod and below line
+				//kthread_stop(consumer_threads[index]);
+			}
 		}
 	}
 
 	//Free up the buffer memory
 	kfree(buffer);
-
 	//printk("The total elapsed time of all processes for UID <UID of the user> is ");
 }
 

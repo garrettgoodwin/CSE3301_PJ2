@@ -16,7 +16,7 @@ struct task_struct **consumer_threads;
 
 //Buffer and its size
 static int buffSize = 10;
-int *buffer;
+struct task_struct **buffer;
 static int in;
 static int out;
 
@@ -43,13 +43,28 @@ int producer(void *data)
 {
 
 	struct task_struct *process;
+	int process_counter = 0;
+	int counter;
 
 	//TEMPORARY: PRINT TEST
 	for_each_process(process)
 	{
-		printk("Process: %d, UUID: %d\n", process->pid, process->cred->uid.val);
+		if(uuid == process->cred->uid.val)
+		{
+			printk("Process: %d, UUID: %d\n", process->pid, process->cred->uid.val);
+			//buffer[counter] = process;
+			//counter = (counter + 1) % buffSize;
+			//counter++;
+			process_counter++;
+		}
+
 	}
 
+	printk("The amount of processes is %d\n", process_counter);
+
+	//printk(["%d] Produced Item#-%d at buffer index:%d for PID:%d\n", process->pid);
+	//<Producer-thread-name>] Produced Item#-<Item-Num> at buffer index:
+	//<buffer-index> for PID:<PID of the process>
 
 
 
@@ -67,14 +82,29 @@ int consumer(void *data)
 {
 
 	int* values = (int*)data;
-	int i, value;
-	printk("Value is %d\n", *values);
 
-	for(i = 0; i < buffSize; i++)
-	{
-		value = buffer[out];
-		out = (out + 1) % buffSize;
-	}
+	//task_struct *task;
+	//u64 start_time, current_time, elapsed_time;
+	
+	//NEED to assign task to something
+
+
+	//start_time = task->start_time;
+	///current_time = ktime_get_ns();
+	//elapsed_time = current_time - start_time;
+
+
+
+
+
+	//int i, value;
+	//printk("Value is %d\n", *values);
+
+	//for(i = 0; i < buffSize; i++)
+	//{
+	//	value = buffer[out];
+	//	out = (out + 1) % buffSize;
+	//}
 	return 2;
 }
 
@@ -95,7 +125,7 @@ static int ModuleInit(void)
 
 	//Create the buffer with size buffSize. 
 	//Otherwise return Out of Memory Error Code
-	buffer = kmalloc(buffSize * sizeof(int), GFP_KERNEL);
+	buffer = kmalloc(buffSize * sizeof(struct task_struct*), GFP_KERNEL);
 	if(!buffer)
 	{
 		return -ENOMEM;

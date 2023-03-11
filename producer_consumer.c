@@ -44,7 +44,7 @@ int producer(void *data)
 
 	struct task_struct *process;
 	int process_counter = 0;
-	int counter= 0;
+	int counter= -1;
 
 	//TEMPORARY VARIABLES
 	int test_index;
@@ -54,10 +54,14 @@ int producer(void *data)
 	{
 		if(uuid == process->cred->uid.val)
 		{
-			printk("Process: %d, UUID: %d\n", process->pid, process->cred->uid.val);
+			//TEMPORARY TEST
+			//printk("Process-%d, UUID: %d\n", process->pid, process->cred->uid.val);
+
+			
 			buffer[counter] = process;
 			counter = (counter + 1) % buffSize;
 			process_counter++;
+			printk("[kProducer-1] Produce-Item:%d at buffer index: %d for PID:%d ", process_counter, counter, process->pid);
 		}
 
 	}
@@ -68,7 +72,9 @@ int producer(void *data)
 
 	for(test_index = 0; test_index < buffSize; test_index++)
 	{
-		printk("Process: %d, UUID: %d\n", buffer[test_index]->pid, buffer[test_index]->cred->uid.val);
+
+		//printk("[kProducer-1] Produce-Item:%d at buffer index: %d for PID:%d ", process_counter, counter, process->pid);
+		printk("[kProducer-1] Process: %d, UUID: %d\n", buffer[test_index]->pid, buffer[test_index]->cred->uid.val);
 	}
 
 	printk("The amount of processes is %d\n", process_counter);
@@ -131,8 +137,11 @@ static int ModuleInit(void)
 	int index = 0; 
 
 
+	printk("CSE330 POroject-2 Kernel Module Inserted");
+	printk("Kernel module received the following inputs: UID:%d, Buffer-Size:%d No of Producer:%d No of Consumer:%d ", uuid, buffSize, prod, cons);
+
 	//TMEPORARY: Display Varaibles
-	Display();
+	//Display();
 
 	//Create the buffer with size buffSize. 
 	//Otherwise return Out of Memory Error Code
@@ -146,6 +155,12 @@ static int ModuleInit(void)
 	if(prod == 1)
 	{
 		producer_thread = kthread_run(producer, NULL, "Producer");
+
+		//Check to see if producer thread was created successfully
+		if(!IS_ERR(producer_thread))
+		{
+			printk("[kProducer-1] kthread Producer Created Successfully");
+		}
 	}
 
 	//Create specified # of Consumer threads

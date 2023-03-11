@@ -44,7 +44,10 @@ int producer(void *data)
 
 	struct task_struct *process;
 	int process_counter = 0;
-	int counter;
+	int counter= 0;
+
+	//TEMPORARY VARIABLES
+	int test_index;
 
 	//TEMPORARY: PRINT TEST
 	for_each_process(process)
@@ -52,12 +55,20 @@ int producer(void *data)
 		if(uuid == process->cred->uid.val)
 		{
 			printk("Process: %d, UUID: %d\n", process->pid, process->cred->uid.val);
-			//buffer[counter] = process;
-			//counter = (counter + 1) % buffSize;
-			//counter++;
+			buffer[counter] = process;
+			counter = (counter + 1) % buffSize;
 			process_counter++;
 		}
 
+	}
+
+
+	//TEMPORARY: Print out processes stored in buffer
+	printk("Processes Stored in Buffer");
+
+	for(test_index = 0; test_index < buffSize; test_index++)
+	{
+		printk("Process: %d, UUID: %d\n", buffer[test_index]->pid, buffer[test_index]->cred->uid.val);
 	}
 
 	printk("The amount of processes is %d\n", process_counter);

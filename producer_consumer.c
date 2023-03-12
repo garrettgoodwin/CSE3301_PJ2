@@ -14,6 +14,8 @@ struct task_struct *producer_thread;
 struct task_struct **consumer_threads;
 
 
+
+
 //Buffer and its size
 static int buffSize = 10;
 struct task_struct **buffer;
@@ -23,6 +25,14 @@ static int out;
 int prod = 0;
 int cons = 0;
 int uuid = 0;
+
+//Define Semaphore
+static struct semaphore empty;
+static struct semaphore full;
+
+//Counters
+int producer_count = 0;
+int consumer_count = 0;
 
 //Define variables as readable and rritasble
 module_param(buffSize, int, S_IRUSR | S_IWUSR);
@@ -41,87 +51,51 @@ void Display(void)
 
 int producer(void *data)
 {
-
 	struct task_struct *process;
-	int process_counter = 0;
-	int counter= -1;
+	int index = 0;
 
-	//TEMPORARY VARIABLES
-	int test_index;
-
-	//TEMPORARY: PRINT TEST
 	for_each_process(process)
 	{
 		if(uuid == process->cred->uid.val)
 		{
-			//TEMPORARY TEST
-			//printk("Process-%d, UUID: %d\n", process->pid, process->cred->uid.val);
-
-			
-			buffer[counter] = process;
-			counter = (counter + 1) % buffSize;
-			process_counter++;
-			printk("[kProducer-1] Produce-Item:%d at buffer index: %d for PID:%d ", process_counter, counter, process->pid);
+			if(down_interruptible(&empty)) {break;}
+			index = (producer_count) % buffSize;
+			producer_count++;
+			buffer[index] = process;
+			printk("[kProducer-1] Produce-Item:%d at buffer index: %d for PID:%d\n", producer_count, index, process->pid);
+			up(&full);
 		}
-
 	}
 
+	printk("The amount of processes is %d\n", producer_count);
 
-	//TEMPORARY: Print out processes stored in buffer
-	printk("Processes Stored in Buffer");
-
-	for(test_index = 0; test_index < buffSize; test_index++)
-	{
-
-		//printk("[kProducer-1] Produce-Item:%d at buffer index: %d for PID:%d ", process_counter, counter, process->pid);
-		printk("[kProducer-1] Process: %d, UUID: %d\n", buffer[test_index]->pid, buffer[test_index]->cred->uid.val);
-	}
-
-	printk("The amount of processes is %d\n", process_counter);
-
-	//printk(["%d] Produced Item#-%d at buffer index:%d for PID:%d\n", process->pid);
-	//<Producer-thread-name>] Produced Item#-<Item-Num> at buffer index:
-	//<buffer-index> for PID:<PID of the process>
-
-
-
-	//TEMPORARY: OLD TEST CODE
-	//int i = 0;
-	//for (i = 0; i < buffSize; i++)
-	//{
-	//	buffer[in] = i;
-	//	in = (in + 1) % buffSize;
-	//}
 	return 0;
 }
 
 int consumer(void *data)
 {
+	struct task_struct *process;
+	int index = 0;
+	int* threadID = (int*)data;
 
-	int* values = (int*)data;
+	while(!kthread_should_stop())
+	{
+		if(down_interruptible(&full)) {break;}
+		index = consumer_count % buffSize;
+		consumer_count++;
+		process = buffer[index];
+
+		printk("[kConsumer-%d] consumed-Item:%d at buffer index: %d for PID:%d\n", *threadID, consumer_count, index,  process->pid);
+		up(&empty);
+	}
+
 
 	//task_struct *task;
 	//u64 start_time, current_time, elapsed_time;
-	
-	//NEED to assign task to something
-
-
 	//start_time = task->start_time;
 	///current_time = ktime_get_ns();
 	//elapsed_time = current_time - start_time;
-
-
-
-
-
-	//int i, value;
-	//printk("Value is %d\n", *values);
-
-	//for(i = 0; i < buffSize; i++)
-	//{
-	//	value = buffer[out];
-	//	out = (out + 1) % buffSize;
-	//}
+	
 	return 2;
 }
 
@@ -136,12 +110,11 @@ static int ModuleInit(void)
 
 	int index = 0; 
 
+	sema_init(&empty, buffSize);
+	sema_init(&full, 0);
 
-	printk("CSE330 POroject-2 Kernel Module Inserted");
-	printk("Kernel module received the following inputs: UID:%d, Buffer-Size:%d No of Producer:%d No of Consumer:%d ", uuid, buffSize, prod, cons);
-
-	//TMEPORARY: Display Varaibles
-	//Display();
+	printk("CSE330 POroject-2 Kernel Module Inserted\n");
+	printk("Kernel module received the following inputs: UID:%d, Buffer-Size:%d No of Producer:%d No of Consumer:%d\n", uuid, buffSize, prod, cons);
 
 	//Create the buffer with size buffSize. 
 	//Otherwise return Out of Memory Error Code
@@ -166,20 +139,20 @@ static int ModuleInit(void)
 	//Create specified # of Consumer threads
 	if(cons > 0)
 	{
-		consumer_threads = kmalloc(sizeof(struct task_struct*), GFP_KERNEL);
+		consumer_threads = kmalloc(cons * sizeof(struct task_struct*), GFP_KERNEL);
 		
 		for(index = 0; index < cons; index++)
 		{
 			int* threadID = kmalloc(sizeof(int), GFP_KERNEL);
 			*threadID = index;
 			consumer_threads[index] = kthread_run(consumer, (void*)threadID, "Consumer");
+			if(!IS_ERR(consumer_threads[index]))
+			{
+				printk("[kConsumer-%d] kthread Consumer Created Successfully\n", index);
+			}
 		}
 	}
 
-	//semaphore test
-	//struct semaphore empty;
-	//sema_init(&empty, 5);
-	
 	return 0;
 }
 
@@ -187,6 +160,8 @@ static int ModuleInit(void)
 static void ModuleExit(void)
 {
 	int index;
+
+	printk("CSE330 POroject-2 Kernel Module Removed\n");
 
 	//Stop producer thread if exists
 	if(prod == 1 && producer_thread != NULL)

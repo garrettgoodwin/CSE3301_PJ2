@@ -6,25 +6,23 @@
 #include <linux/delay.h>
 #include <linux/sched/signal.h>
 #include <linux/semaphore.h>
-#include <linux/time.h>
+#include <linux/ktime.h>
 #include <linux/slab.h>
 
 //Two Thread Pointers
 struct task_struct *producer_thread;
 struct task_struct **consumer_threads;
 
-
-
-
 //Buffer and its size
 static int buffSize = 10;
 struct task_struct **buffer;
-static int in;
-static int out;
 
 int prod = 0;
 int cons = 0;
 int uuid = 0;
+
+//Total Elapsed time for the program
+u64 total_elapsed_time;
 
 //Define Semaphore
 static struct semaphore empty;
@@ -67,8 +65,6 @@ int producer(void *data)
 		}
 	}
 
-	printk("The amount of processes is %d\n", producer_count);
-
 	return 0;
 }
 
@@ -77,6 +73,8 @@ int consumer(void *data)
 	struct task_struct *process;
 	int index = 0;
 	int* threadID = (int*)data;
+	u64  current_time, elapsed_time;
+	int seconds, minutes, hours;
 
 	while(!kthread_should_stop())
 	{
@@ -85,25 +83,28 @@ int consumer(void *data)
 		consumer_count++;
 		process = buffer[index];
 
-		printk("[kConsumer-%d] consumed-Item:%d at buffer index: %d for PID:%d\n", *threadID, consumer_count, index,  process->pid);
+		//Get current time
+		current_time = ktime_get_ns();
+		elapsed_time = current_time - process->start_time;
+		total_elapsed_time += elapsed_time;
+
+		seconds = (int)(elapsed_time/ 1000000000);
+		minutes = seconds / 60;
+		hours = minutes/60;
+		seconds = seconds % 60;
+		minutes = minutes %60;
+
+		printk("[kConsumer-%d] consumed-Item:%d at buffer index: %d for PID:%di\tElapsed Time-%d:%d:%d\n", *threadID, consumer_count, index,  process->pid, hours, minutes, seconds);
 		up(&empty);
 	}
-
-
-	//task_struct *task;
-	//u64 start_time, current_time, elapsed_time;
-	//start_time = task->start_time;
-	///current_time = ktime_get_ns();
-	//elapsed_time = current_time - start_time;
 	
-	return 2;
+	return 0;
 }
 
 
 
 static int ModuleInit(void)
 {
-
 	//Create the producer and consumer threads
 	struct task_struct *producer_thread;
 	struct task_struct **consumer_threads;
@@ -161,13 +162,12 @@ static void ModuleExit(void)
 {
 	int index;
 
-	printk("CSE330 POroject-2 Kernel Module Removed\n");
-
 	//Stop producer thread if exists
 	if(prod == 1 && producer_thread != NULL)
 	{
-		//Currently an error with rmmod and below line
-		//kthread_stop(producer_thread);
+		//Currently an error with rrmod
+		//kthread_stop(producer_thread);	
+		//printk("[kProducer-1] Producer Thread stopped.\n");
 	}
 
 	//Stop Consumer Threads if exists
@@ -177,16 +177,20 @@ static void ModuleExit(void)
 		{
 			if(consumer_threads[index] != NULL)
 			{
-
 				//Currently an error with rmmod and below line
 				//kthread_stop(consumer_threads[index]);
+				//printk("[kConsumer-%d] Consumer Thread stopped.\n", index);
 			}
 		}
 	}
 
+	printk("Total number of items produced: %d\n", producer_count);
+	printk("Total number of items consumed: %d\n", consumer_count);
+	//printk("The total elapsed time of all processes for UID %d is %d:%d:%d\n", uid);
+	printk("CSE330 POroject-2 Kernel Module Removed\n");
+
 	//Free up the buffer memory
 	kfree(buffer);
-	//printk("The total elapsed time of all processes for UID <UID of the user> is ");
 }
 
 module_init(ModuleInit);

@@ -157,16 +157,13 @@ static int ModuleInit(void)
 static void ModuleExit(void)
 {
 	int index;
+	int seconds, minutes, hours;
 
 	//Stop producer thread if exists
 	if(prod == 1 && producer_thread != NULL)
 	{
 		//kthread_stop(producer_thread);	
 		printk(KERN_INFO "[kProducer-1] Producer Thread stopped.\n");
-	}
-	else 
-	{
-		printk(KERN_INFO "Producer Thread is Null.\n");
 	}
 
 	//Stop Consumer Threads if exists
@@ -182,9 +179,21 @@ static void ModuleExit(void)
 		}
 	}
 
+	//Destroy Semaphores
+	//sema_destroy(&empty);
+	//sema_destroy(&full);
+	
+	//Calculate total elapsed time
+	seconds = (int)(total_elapsed_time/ 1000000000);
+	minutes = seconds / 60;
+	hours = minutes/60;
+	seconds = seconds % 60;
+	minutes = minutes %60;
+
 	printk(KERN_INFO "Total number of items produced: %d\n", producer_count);
 	printk(KERN_INFO "Total number of items consumed: %d\n", consumer_count);
-	//printk("The total elapsed time of all processes for UID %d is %d:%d:%d\n", uid);
+
+	printk("The total elapsed time of all processes for UID %d is %d:%d:%d\n", uuid, hours, minutes, seconds);
 	printk(KERN_INFO "CSE330 POroject-2 Kernel Module Removed\n");
 
 	//Free up the buffer memory

@@ -40,10 +40,10 @@ module_param(uuid, int, S_IRUSR | S_IWUSR);
 
 void Display(void)
 {
-	printk("Test: buffSize = %d", buffSize);
-	printk("Test: prod = %d", prod);
-	printk("Test: cons = %d", cons);
-	printk("Test: uuid = %d", uuid);
+	printk(KERN_INFO "Test: buffSize = %d", buffSize);
+	printk(KERN_INFO "Test: prod = %d", prod);
+	printk(KERN_INFO "Test: cons = %d", cons);
+	printk(KERN_INFO "Test: uuid = %d", uuid);
 }
 
 
@@ -60,7 +60,7 @@ int producer(void *data)
 			index = (producer_count) % buffSize;
 			producer_count++;
 			buffer[index] = process;
-			printk("[kProducer-1] Produce-Item:%d at buffer index: %d for PID:%d\n", producer_count, index, process->pid);
+			printk(KERN_INFO "[kProducer-1] Produce-Item:%d at buffer index: %d for PID:%d\n", producer_count, index, process->pid);
 			up(&full);
 		}
 	}
@@ -94,7 +94,7 @@ int consumer(void *data)
 		seconds = seconds % 60;
 		minutes = minutes %60;
 
-		printk("[kConsumer-%d] consumed-Item:%d at buffer index: %d for PID:%di\tElapsed Time-%d:%d:%d\n", *threadID, consumer_count, index,  process->pid, hours, minutes, seconds);
+		printk(KERN_INFO "[kConsumer-%d] consumed-Item:%d at buffer index: %d for PID:%di\tElapsed Time-%d:%d:%d\n", *threadID, consumer_count, index,  process->pid, hours, minutes, seconds);
 		up(&empty);
 	}
 	
@@ -105,17 +105,13 @@ int consumer(void *data)
 
 static int ModuleInit(void)
 {
-	//Create the producer and consumer threads
-	struct task_struct *producer_thread;
-	struct task_struct **consumer_threads;
-
 	int index = 0; 
 
 	sema_init(&empty, buffSize);
 	sema_init(&full, 0);
 
-	printk("CSE330 POroject-2 Kernel Module Inserted\n");
-	printk("Kernel module received the following inputs: UID:%d, Buffer-Size:%d No of Producer:%d No of Consumer:%d\n", uuid, buffSize, prod, cons);
+	printk(KERN_INFO "CSE330 POroject-2 Kernel Module Inserted\n");
+	printk(KERN_INFO "Kernel module received the following inputs: UID:%d, Buffer-Size:%d No of Producer:%d No of Consumer:%d\n", uuid, buffSize, prod, cons);
 
 	//Create the buffer with size buffSize. 
 	//Otherwise return Out of Memory Error Code
@@ -133,7 +129,7 @@ static int ModuleInit(void)
 		//Check to see if producer thread was created successfully
 		if(!IS_ERR(producer_thread))
 		{
-			printk("[kProducer-1] kthread Producer Created Successfully");
+			printk(KERN_INFO "[kProducer-1] kthread Producer Created Successfully");
 		}
 	}
 
@@ -145,11 +141,11 @@ static int ModuleInit(void)
 		for(index = 0; index < cons; index++)
 		{
 			int* threadID = kmalloc(sizeof(int), GFP_KERNEL);
-			*threadID = index;
+			*threadID = index+1;
 			consumer_threads[index] = kthread_run(consumer, (void*)threadID, "Consumer");
 			if(!IS_ERR(consumer_threads[index]))
 			{
-				printk("[kConsumer-%d] kthread Consumer Created Successfully\n", index);
+				printk(KERN_INFO "[kConsumer-%d] kthread Consumer Created Successfully\n", index);
 			}
 		}
 	}
@@ -165,9 +161,12 @@ static void ModuleExit(void)
 	//Stop producer thread if exists
 	if(prod == 1 && producer_thread != NULL)
 	{
-		//Currently an error with rrmod
 		//kthread_stop(producer_thread);	
-		//printk("[kProducer-1] Producer Thread stopped.\n");
+		printk(KERN_INFO "[kProducer-1] Producer Thread stopped.\n");
+	}
+	else 
+	{
+		printk(KERN_INFO "Producer Thread is Null.\n");
 	}
 
 	//Stop Consumer Threads if exists
@@ -177,17 +176,16 @@ static void ModuleExit(void)
 		{
 			if(consumer_threads[index] != NULL)
 			{
-				//Currently an error with rmmod and below line
 				//kthread_stop(consumer_threads[index]);
-				//printk("[kConsumer-%d] Consumer Thread stopped.\n", index);
+				printk("[kConsumer-%d] Consumer Thread stopped.\n", index+1);
 			}
 		}
 	}
 
-	printk("Total number of items produced: %d\n", producer_count);
-	printk("Total number of items consumed: %d\n", consumer_count);
+	printk(KERN_INFO "Total number of items produced: %d\n", producer_count);
+	printk(KERN_INFO "Total number of items consumed: %d\n", consumer_count);
 	//printk("The total elapsed time of all processes for UID %d is %d:%d:%d\n", uid);
-	printk("CSE330 POroject-2 Kernel Module Removed\n");
+	printk(KERN_INFO "CSE330 POroject-2 Kernel Module Removed\n");
 
 	//Free up the buffer memory
 	kfree(buffer);
